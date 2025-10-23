@@ -1,0 +1,13 @@
+# --- Local DB (Docker Compose) ---
+spring:
+  datasource:
+    # 환경 변수(SPRING_DATASOURCE_URL)가 없으면 우측의 기본값 사용
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/imagepost_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+# --- Local File Storage ---
+file:
+  # 환경 변수(FILE_UPLOAD_DIR)가 없으면 우측의 기본값 사용
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads/}
