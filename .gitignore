@@ -39,3 +39,5 @@ out/
 # Local Environment
 .env
 /uploads/
+
+/frontend-react-src/node_modules/*
