@@ -9,7 +9,7 @@ const apiClient = axios.create({
 });
 
 // 모든 게시글 조회
-export const getAllPosts = () => apiClient.get('/');
+export const getAllPosts = () => apiClient.get('');
 
 // 특정 게시글 조회
 export const getPostById = (id) => apiClient.get(`/${id}`);
@@ -37,7 +37,7 @@ export const createPost = (postData) => {
         }
     }
 
-    return apiClient.post('/', formData, {
+    return apiClient.post('', formData, {
         headers: {
             // Content-Type은 axios가 FormData를 감지하여 자동으로 'multipart/form-data'로 설정함
         },
