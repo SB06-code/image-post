@@ -19,6 +19,3 @@ uploads/
 # Dockerfile 및 스크립트
 Dockerfile
 build-and-copy-fe.sh
-
-# 스크립트를 통해 빌드된 결과만 'src' 폴더 안에 포함
-frontend-react-src/
