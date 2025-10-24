@@ -8,7 +8,7 @@ function PostList() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetchPosts();
+        void fetchPosts();
     }, []);
 
     const fetchPosts = async () => {
