@@ -7,6 +7,11 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
+  cloud:
+    aws:
+      s3:
+        enabled: false
+
 # --- Local File Storage ---
 file:
   # 환경 변수(FILE_UPLOAD_DIR)가 없으면 우측의 기본값 사용
