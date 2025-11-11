@@ -19,7 +19,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
-@Profile("local") // 'local' 프로필일 때만 이 빈을 등록
+@Profile(value = {"local", "build"}) // 'local', 'build'  프로필일 때만 이 빈을 등록
 public class LocalFileStorageService implements FileStorageService {
 
     @Value("${file.upload-dir}")

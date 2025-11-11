@@ -1,0 +1,16 @@
+# --- Build stage settings ---
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  cloud:
+    aws:
+      s3:
+        enabled: false
+
+# --- Local File Storage ---
+file:
+  # 환경 변수(FILE_UPLOAD_DIR)가 없으면 우측의 기본값 사용
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads/}
