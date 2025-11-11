@@ -81,4 +81,9 @@ public class LocalFileStorageService implements FileStorageService {
             }
         }
     }
+
+    @Override
+    public String getRetrievalUrl(String storageUrl) {
+        return storageUrl;
+    }
 }

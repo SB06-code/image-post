@@ -11,13 +11,13 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetUrlRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +30,7 @@ public class S3FileStorageService implements FileStorageService {
 
     // AWS SDK v2 (io.awspring.cloud)
     private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
 
     // application-dev.yml에서 주입
     @Value("${cloud.aws.s3.bucket}")
@@ -57,15 +58,9 @@ public class S3FileStorageService implements FileStorageService {
                         .build();
 
                 RequestBody requestBody = RequestBody.fromInputStream(file.getInputStream(), file.getSize());
-
                 s3Client.putObject(putObjectRequest, requestBody);
 
-                // 저장된 객체의 S3 URL 가져오기
-                String storageUrl = s3Client.utilities()
-                        .getUrl(GetUrlRequest.builder().bucket(bucket).key(s3Key).build())
-                        .toString();
-
-                storedFiles.add(new FileMetaData(storageUrl, originalFileName));
+                storedFiles.add(new FileMetaData(s3Key, originalFileName));
 
             } catch (IOException e) {
                 log.error("S3 파일 업로드 실패: {}", originalFileName, e);
@@ -76,16 +71,14 @@ public class S3FileStorageService implements FileStorageService {
     }
 
     @Override
-    public void deleteFiles(List<String> storageUrls) {
-        if (storageUrls == null || storageUrls.isEmpty()) {
+    public void deleteFiles(List<String> storageKeys) { // (★수정) URL이 아닌 S3 Key 리스트를 받음
+        if (storageKeys == null || storageKeys.isEmpty()) {
             return;
         }
 
-        for (String url : storageUrls) {
+        for (String key : storageKeys) { // (★수정) 변수명 변경 (url -> key)
             try {
-                // S3 URL에서 객체 키(Key) 추출
-                String key = extractKeyFromUrl(url);
-
+                // (★수정) URL 파싱 로직 제거, key를 직접 사용
                 DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                         .bucket(bucket)
                         .key(key)
@@ -94,21 +87,33 @@ public class S3FileStorageService implements FileStorageService {
                 s3Client.deleteObject(deleteObjectRequest);
 
             } catch (Exception e) {
-                log.error("S3 파일 삭제 실패: {}", url, e);
+                log.error("S3 파일 삭제 실패: {}", key, e);
             }
         }
     }
 
-    // S3 URL에서 S3 Key(파일 경로)를 추출하는 헬퍼 메서드
-    private String extractKeyFromUrl(String fileUrl) {
+    // S3 Key를 기반으로 Presigned GET URL을 생성하는 메서드
+    public String getRetrievalUrl(String s3Key) {
+        if (s3Key == null || s3Key.isEmpty()) {
+            return null; // 또는 기본 이미지 URL
+        }
+
         try {
-            URL url = new URL(fileUrl);
-            String path = url.getPath();
-            // URL 디코딩(한글 등) 후, 맨 앞의 '/' 제거
-            return URLDecoder.decode(path.substring(1), StandardCharsets.UTF_8);
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(s3Key)
+                    .build();
+
+            // 15분 동안 유효한 임시 URL 생성
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(15))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            return s3Presigner.presignGetObject(presignRequest).url().toString();
         } catch (Exception e) {
-            log.warn("S3 URL에서 키 추출 실패: {}", fileUrl, e);
-            throw new IllegalArgumentException("S3 URL 형식이 잘못되었습니다.", e);
+            log.error("S3 Presigned GET URL 생성 실패: {}", s3Key, e);
+            return null; // 예외 발생 시 null 반환
         }
     }
 }

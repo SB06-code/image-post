@@ -3,6 +3,7 @@ package codeit.sb06.imagepost.service;
 import codeit.sb06.imagepost.dto.FileMetaData;
 import codeit.sb06.imagepost.dto.request.PostCreateRequest;
 import codeit.sb06.imagepost.dto.request.PostUpdateRequest;
+import codeit.sb06.imagepost.dto.response.PostImageResponse;
 import codeit.sb06.imagepost.dto.response.PostResponse;
 import codeit.sb06.imagepost.entity.Post;
 import codeit.sb06.imagepost.entity.PostImage;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -51,7 +53,7 @@ public class PostService {
 
         // 5. Post 저장 (Cascade 설정으로 PostImage도 함께 DB에 저장됨)
         Post savedPost = postRepository.save(post);
-        return PostResponse.from(savedPost);
+        return convertToResponseWithRetrievalUrls(savedPost);
     }
 
     @Transactional
@@ -86,7 +88,7 @@ public class PostService {
         post.setImages(newPostImages);
 
         // 메서드 종료 시 @Transactional에 의해 변경 감지(Dirty Checking)되어 DB 업데이트
-        return PostResponse.from(post);
+        return convertToResponseWithRetrievalUrls(post);
     }
 
     @Transactional
@@ -107,12 +109,12 @@ public class PostService {
 
     public PostResponse getPostById(Long id) {
         Post post = findPostById(id);
-        return PostResponse.from(post);
+        return convertToResponseWithRetrievalUrls(post);
     }
 
     public List<PostResponse> findAllPosts() {
         return postRepository.findAll().stream()
-                .map(PostResponse::from)
+                .map(this::convertToResponseWithRetrievalUrls)
                 .collect(Collectors.toList());
     }
 
@@ -134,5 +136,31 @@ public class PostService {
             // ErrorCode에 정의된 메시지 사용
             throw new FileUploadException(ErrorCode.INVALID_FILE_COUNT.getMessage());
         }
+    }
+
+    private PostResponse convertToResponseWithRetrievalUrls(Post post) {
+        List<PostImageResponse> imageResponses;
+
+        if (post.getImages() != null) {
+            imageResponses = post.getImages().stream()
+                    .map(image -> PostImageResponse.builder()
+                            .id(image.getId())
+                            // (★핵심) fileStorageService를 통해 S3 Key를 Presigned URL로 변환
+                            .imageUrl(fileStorageService.getRetrievalUrl(image.getStorageUrl()))
+                            .build())
+                    .collect(Collectors.toList());
+        } else {
+            imageResponses = Collections.emptyList();
+        }
+
+        return PostResponse.builder()
+                .id(post.getId())
+                .author(post.getAuthor())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .tags(post.getTags())
+                .images(imageResponses) // Presigned URL이 포함된 리스트
+                .createdAt(post.getCreatedAt())
+                .build();
     }
 }

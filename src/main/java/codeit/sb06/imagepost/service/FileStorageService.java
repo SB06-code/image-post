@@ -16,4 +16,6 @@ public interface FileStorageService {
      * 스토리지에서 여러 개의 파일을 삭제합니다.
      */
     void deleteFiles(List<String> storageUrls);
+
+    String getRetrievalUrl(String storageUrl);
 }
